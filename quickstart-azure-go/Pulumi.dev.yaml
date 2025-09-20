@@ -1,0 +1,9 @@
+encryptionsalt: v1:E8Em2mx2S5g=:v1:LIkmYQCUelrVQaYO:Uq+GuQHnAKc26K7ktaOJlm5TV+3raw==
+config:
+  azure-native:clientId: 709fa6a3-e047-47b2-bca8-7268ce9cc4c1
+  azure-native:clientSecret:
+    secure: v1:eGr0TaEtVC+Fq/+8:9GQtJvv8tY7grLXppQCgqTG+624QvZ8A9+AslVbODtid4ohw1+j44KI4v27AXJMLRd9sv0guYzc=
+  azure-native:tenantId: e467b6d8-cf62-4e59-9a87-758ef858aeb6
+  azure-native:subscriptionId: cedbad7b-9e41-4314-b928-8c44b741a871
+  azure-native:location: westeurope
+  azure-native:resourceGroupName: pulumi-tech
