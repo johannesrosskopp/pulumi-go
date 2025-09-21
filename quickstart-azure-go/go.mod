@@ -2,9 +2,14 @@ module quickstart-azure-go
 
 go 1.23.11
 
-require github.com/pulumi/pulumi/sdk/v3 v3.193.0
+require github.com/pulumi/pulumi/sdk/v3 v3.197.0
 
-require github.com/pulumi/pulumi-azure-native-sdk/v3 v3.8.0 // indirect
+require (
+	github.com/pulumi/pulumi-azure-native-sdk/v3 v3.8.0 // indirect
+	github.com/pulumi/pulumi-azure-native-sdk/web/v3 v3.8.0 // indirect
+	github.com/pulumi/pulumi-docker/sdk/v4 v4.8.2 // indirect
+	github.com/spf13/cast v1.5.0 // indirect
+)
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
@@ -73,7 +78,7 @@ require (
 	github.com/uber/jaeger-client-go v2.30.0+incompatible // indirect
 	github.com/uber/jaeger-lib v2.4.1+incompatible // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	github.com/zclconf/go-cty v1.13.2 // indirect
+	github.com/zclconf/go-cty v1.14.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
