@@ -71,7 +71,7 @@ func createApi(ctx *pulumi.Context, rg *resources.ResourceGroup) (pulumi.StringO
 	plan, err := web.NewAppServicePlan(ctx, "app-plan", &web.AppServicePlanArgs{
 		ResourceGroupName: rg.Name,
 		Location:          rg.Location,
-		Name:              pulumi.String("basic-plan"),
+		Name:              pulumi.String(fmt.Sprintf("basic-plan-%s", myname)),
 		Sku: &web.SkuDescriptionArgs{
 			Name: pulumi.String("B1"),
 			Tier: pulumi.String("Basic"),
@@ -158,7 +158,7 @@ func createStaticWebsite(ctx *pulumi.Context, args StaticWebsiteArgs) error {
 	htmlAsset := pulumi.NewFileAsset("./www/index.html")
 
 	staticPageHTML, err := local.NewCommand(ctx, "my-bucket", &local.CommandArgs{
-		Update: pulumi.String("sed -e \"s|API_URL|$ENV_API_URL|g\" ./www/index.html"),
+		Update: pulumi.String("ls -la .www/; sed -e \"s|API_URL|$ENV_API_URL|g\" ./www/index.html"),
 		Environment: pulumi.StringMap{
 			"ENV_API_URL": args.apiUrl,
 		},
