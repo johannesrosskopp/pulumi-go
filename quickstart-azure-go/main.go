@@ -16,8 +16,6 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 
-		myname := "johannes"
-
 		rg, err := resources.NewResourceGroup(ctx, "my-resource-group", &resources.ResourceGroupArgs{
 			Location:          pulumi.String("westeurope"),
 			ResourceGroupName: pulumi.String("pulumi-tech"),
@@ -26,85 +24,112 @@ func main() {
 			return err
 		}
 
-		// Setup Docker image: Configure Docker Hub credentials via config
-		// pulumi config set dockerhub:username <your-username>
-		// pulumi config set dockerhub:password <your-password> --secret
-		dockerCfg := config.New(ctx, "dockerhub")
-		dockerUsername := dockerCfg.Require("username")
-		dockerPassword := dockerCfg.RequireSecret("password")
-
-		image, err := docker.NewImage(ctx, "app-image", &docker.ImageArgs{
-			Build: &docker.DockerBuildArgs{
-				Context:    pulumi.String("./app"),
-				Dockerfile: pulumi.String("./app/Dockerfile"),
-			},
-			ImageName: pulumi.String(fmt.Sprintf("%s/pulumi-tech-tmp:timestamp_%s_latest", dockerUsername, myname)),
-			Registry: &docker.RegistryArgs{
-				Server:   pulumi.String("docker.io"),
-				Username: pulumi.String(dockerUsername),
-				Password: dockerPassword,
-			},
-		})
+		apiUrl, err := createApi(ctx, rg)
 		if err != nil {
 			return err
 		}
 
-		plan, err := web.NewAppServicePlan(ctx, "app-plan", &web.AppServicePlanArgs{
-			ResourceGroupName: rg.Name,
-			Location:          rg.Location,
-			Name:              pulumi.String("basic-plan"),
-			Sku: &web.SkuDescriptionArgs{
-				Name: pulumi.String("B1"),
-				Tier: pulumi.String("Basic"),
-			},
-			// Linux is true, why oh why, no one knows
-			Reserved: pulumi.BoolPtr(true),
+		err = createStaticWebsite(ctx, StaticWebsiteArgs{
+			rg:     rg,
+			apiUrl: apiUrl,
 		})
 		if err != nil {
 			return err
 		}
-
-		image.ImageName.ApplyT(func(imageName string) error {
-			fmt.Printf("Image name: %s\n", imageName)
-			return nil
-		})
-
-		webapp, err := web.NewWebApp(ctx, "webapp", &web.WebAppArgs{
-			ResourceGroupName: rg.Name,
-			Kind:              pulumi.String("app,linux,container"),
-			Location:          rg.Location,
-			Name:              pulumi.String(fmt.Sprintf("timeapp-%s", myname)),
-			ServerFarmId:      plan.ID(),
-			SiteConfig: &web.SiteConfigArgs{
-				LinuxFxVersion: pulumi.Sprintf("DOCKER|%s", image.ImageName),
-				AppSettings: web.NameValuePairArray{
-					&web.NameValuePairArgs{
-						Name:  pulumi.String("WEBSITES_ENABLE_APP_SERVICE_STORAGE"),
-						Value: pulumi.String("false"),
-					},
-				},
-			},
-		})
-		if err != nil {
-			return err
-		}
-
-		apiUrl := pulumi.Sprintf("http://%s", webapp.DefaultHostName)
-
-		ctx.Export("apiUrl", apiUrl)
 
 		return nil
 	})
 }
 
+func createApi(ctx *pulumi.Context, rg *resources.ResourceGroup) (pulumi.StringOutput, error) {
+	techconfig := config.New(ctx, "tech")
+	myname := techconfig.Require("myname")
+
+	// Setup Docker image: Configure Docker Hub credentials via config
+	// pulumi config set dockerhub:username <your-username>
+	// pulumi config set dockerhub:password <your-password> --secret
+	dockerCfg := config.New(ctx, "dockerhub")
+	dockerUsername := dockerCfg.Require("username")
+	dockerPassword := dockerCfg.RequireSecret("password")
+
+	image, err := docker.NewImage(ctx, "app-image", &docker.ImageArgs{
+		Build: &docker.DockerBuildArgs{
+			Context:    pulumi.String("./app"),
+			Dockerfile: pulumi.String("./app/Dockerfile"),
+		},
+		ImageName: pulumi.String(fmt.Sprintf("%s/pulumi-tech-tmp:timestamp_%s_latest", dockerUsername, myname)),
+		Registry: &docker.RegistryArgs{
+			Server:   pulumi.String("docker.io"),
+			Username: pulumi.String(dockerUsername),
+			Password: dockerPassword,
+		},
+	})
+	if err != nil {
+		return pulumi.StringOutput{}, err
+	}
+
+	plan, err := web.NewAppServicePlan(ctx, "app-plan", &web.AppServicePlanArgs{
+		ResourceGroupName: rg.Name,
+		Location:          rg.Location,
+		Name:              pulumi.String("basic-plan"),
+		Sku: &web.SkuDescriptionArgs{
+			Name: pulumi.String("B1"),
+			Tier: pulumi.String("Basic"),
+		},
+		// Linux is true, why oh why, no one knows
+		Reserved: pulumi.BoolPtr(true),
+	})
+	if err != nil {
+		return pulumi.StringOutput{}, err
+	}
+
+	image.ImageName.ApplyT(func(imageName string) error {
+		fmt.Printf("Image name: %s\n", imageName)
+		return nil
+	})
+
+	webapp, err := web.NewWebApp(ctx, "webapp", &web.WebAppArgs{
+		ResourceGroupName: rg.Name,
+		Kind:              pulumi.String("app,linux,container"),
+		Location:          rg.Location,
+		Name:              pulumi.String(fmt.Sprintf("timeapp-%s", myname)),
+		ServerFarmId:      plan.ID(),
+		SiteConfig: &web.SiteConfigArgs{
+			LinuxFxVersion: pulumi.Sprintf("DOCKER|%s", image.ImageName),
+			AppSettings: web.NameValuePairArray{
+				&web.NameValuePairArgs{
+					Name:  pulumi.String("WEBSITES_ENABLE_APP_SERVICE_STORAGE"),
+					Value: pulumi.String("false"),
+				},
+			},
+			Cors: &web.CorsSettingsArgs{
+				AllowedOrigins: pulumi.StringArray{
+					pulumi.String("*"), // Allow all origins - you can restrict this later
+				},
+			},
+		},
+	})
+	if err != nil {
+		return pulumi.StringOutput{}, err
+	}
+
+	apiUrl := pulumi.Sprintf("https://%s", webapp.DefaultHostName)
+
+	ctx.Export("apiUrl", apiUrl)
+
+	return apiUrl, nil
+}
+
 type StaticWebsiteArgs struct {
-	rg    *resources.ResourceGroup
+	rg     *resources.ResourceGroup
 	apiUrl pulumi.StringOutput
 }
 
 func createStaticWebsite(ctx *pulumi.Context, args StaticWebsiteArgs) error {
-	config := config.New(ctx, "staticwebsite")
-	myname := config.Require("name")
+	techconfig := config.New(ctx, "tech")
+	myname := techconfig.Require("myname")
+
+	fmt.Printf("Myname: %s\n", myname)
 
 	storageAccount, err := storage.NewStorageAccount(ctx, "storageaccount", &storage.StorageAccountArgs{
 		ResourceGroupName: args.rg.Name,
@@ -129,10 +154,16 @@ func createStaticWebsite(ctx *pulumi.Context, args StaticWebsiteArgs) error {
 		return err
 	}
 
+	// Read the HTML file to use as a trigger for rebuilding when it changes
+	htmlAsset := pulumi.NewFileAsset("./www/index.html")
+
 	staticPageHTML, err := local.NewCommand(ctx, "my-bucket", &local.CommandArgs{
-		Create: pulumi.String("sed -e \"s/API_URL/$ENV_API_URL/\""),
+		Update: pulumi.String("sed -e \"s|API_URL|$ENV_API_URL|g\" ./www/index.html"),
 		Environment: pulumi.StringMap{
 			"ENV_API_URL": args.apiUrl,
+		},
+		Triggers: pulumi.Array{
+			htmlAsset,
 		},
 	})
 	if err != nil {
@@ -140,6 +171,7 @@ func createStaticWebsite(ctx *pulumi.Context, args StaticWebsiteArgs) error {
 	}
 
 	staticPageHTML.Stdout.ApplyT(func(staticPageHTML string) error {
+		fmt.Printf("Static page HTML: %s\n", staticPageHTML)
 		_, err = storage.NewBlob(ctx, "blobResource", &storage.BlobArgs{
 			AccountName:       storageAccount.Name,
 			ContainerName:     staticWebsite.ContainerName,
@@ -152,6 +184,22 @@ func createStaticWebsite(ctx *pulumi.Context, args StaticWebsiteArgs) error {
 		if err != nil {
 			return err
 		}
+
+		// Upload favicon if it exists
+		_, err = storage.NewBlob(ctx, "faviconResource", &storage.BlobArgs{
+			AccountName:       storageAccount.Name,
+			ContainerName:     staticWebsite.ContainerName,
+			ResourceGroupName: args.rg.Name,
+			BlobName:          pulumi.String("favicon.ico"),
+			ContentType:       pulumi.String("image/x-icon"),
+			Source:            pulumi.NewFileAsset("./www/favicon.ico"),
+			Type:              storage.BlobTypeBlock,
+		})
+		if err != nil {
+			// If favicon doesn't exist, that's OK - just continue
+			fmt.Printf("Note: favicon.ico not found in ./www/ - skipping favicon upload\n")
+		}
+
 		return nil
 	})
 

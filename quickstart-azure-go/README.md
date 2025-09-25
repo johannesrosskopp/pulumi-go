@@ -6,3 +6,6 @@ pulumi import azure-native:resources:ResourceGroup my-resource-group /subscripti
 Destroy everything but keep the shared (protected resource group)
 
 pulumi destroy --exclude-protected
+
+mkdir -p ~/.docker
+echo '{}' > ~/.docker/config.json
