@@ -32,7 +32,7 @@ pulumi login file://.state/
 ### 2. Select or Create Stack
 
 ```bash
-pulumi stack select dev
+pulumi stack select
 # If 'dev' stack doesn't exist, create it.
 # Enter your stack passphrase when prompted
 ```
