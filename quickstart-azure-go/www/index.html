@@ -5,6 +5,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>pulumi tech</title>
+    <script type="text/javascript">
+        const apiUrl="API_URL";
+        async function updateTime(){
+            const response = await fetch(apiUrl)
+            container = document.getElementById('time-container');
+            container.innerHTML=`time is ${response.body}`;
+        };
+    </script>
 </head>
 
 <body>
@@ -12,6 +20,9 @@
         <h1>pulumi tech</h1>
         <p>Minimal static site generated for Pulumi quickstart.</p>
     </main>
+
+    <div id='time-container'>Hit refresh</div>
+    <button onclick="updateTime()">Refresh</button>
 </body>
 
 </html>

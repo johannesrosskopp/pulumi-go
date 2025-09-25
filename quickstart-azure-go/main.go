@@ -1,29 +1,42 @@
 package main
 
 import (
-	"fmt"
+	// "fmt"
+
+	"github.com/pulumi/pulumi-command/sdk/go/command/local"
 
 	resources "github.com/pulumi/pulumi-azure-native-sdk/resources/v3"
-	storage "github.com/pulumi/pulumi-azure-native-sdk/storage/v3"
-	web "github.com/pulumi/pulumi-azure-native-sdk/web/v3"
-	"github.com/pulumi/pulumi-docker/sdk/v4/go/docker"
+	// storage "github.com/pulumi/pulumi-azure-native-sdk/storage/v3"
+	// web "github.com/pulumi/pulumi-azure-native-sdk/web/v3"
+	// "github.com/pulumi/pulumi-docker/sdk/v4/go/docker"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
+	// "github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 
-		myname := "johannes"
+		// myname := "johannes"
 
-		rg, err := resources.NewResourceGroup(ctx, "my-resource-group", &resources.ResourceGroupArgs{
+		
+		random, err := local.NewCommand(ctx, "my-bucket", &local.CommandArgs{
+			Create: pulumi.String("echo 'New File' > new_file.txt; echo $(pwd)/new_file.txt"),
+			Delete: pulumi.String("rm new_file.txt"),
+		})
+		if err != nil {
+			return err
+		}
+
+		ctx.Export("output", random.Stdout)
+
+		_, err = resources.NewResourceGroup(ctx, "my-resource-group", &resources.ResourceGroupArgs{
 			Location:          pulumi.String("westeurope"),
 			ResourceGroupName: pulumi.String("pulumi-tech"),
 		}, pulumi.Protect(true))
 		if err != nil {
 			return err
 		}
-
+/*
 		storageAccount, err := storage.NewStorageAccount(ctx, "storageaccount", &storage.StorageAccountArgs{
 			ResourceGroupName: rg.Name,
 			Location:          rg.Location,
@@ -139,7 +152,7 @@ func main() {
 
 		ctx.Export("primaryWebEndpoint", storageAccount.PrimaryEndpoints.Web())
 
-		ctx.Export("apiUrl", pulumi.Sprintf("http://%s", webapp.DefaultHostName))
+		ctx.Export("apiUrl", pulumi.Sprintf("http://%s", webapp.DefaultHostName))*/
 
 		return nil
 	})
