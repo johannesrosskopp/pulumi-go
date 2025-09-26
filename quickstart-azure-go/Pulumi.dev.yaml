@@ -10,3 +10,4 @@ config:
   dockerhub:username: johannesrosskopp
   dockerhub:password:
     secure: v1:Ki3DpmLq7YqSUcCO:IXIuuNjaWbwONiprcBSQBOzr0402lBxsHyolGu5gtz5d2hQrG11qnXHWUuwG2dxBpIH9zw==
+  tech:myname: johannes
