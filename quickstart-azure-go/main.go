@@ -88,32 +88,32 @@ func createApi(ctx *pulumi.Context, rg *resources.ResourceGroup) (pulumi.StringO
 		return nil
 	})
 
-	webapp, err := web.NewWebApp(ctx, "webapp", &web.WebAppArgs{
-		ResourceGroupName: rg.Name,
-		Kind:              pulumi.String("app,linux,container"),
-		Location:          rg.Location,
-		Name:              pulumi.String(fmt.Sprintf("timeapp-%s", myname)),
-		ServerFarmId:      plan.ID(),
-		SiteConfig: &web.SiteConfigArgs{
-			LinuxFxVersion: pulumi.Sprintf("DOCKER|%s", image.ImageName),
-			AppSettings: web.NameValuePairArray{
-				&web.NameValuePairArgs{
-					Name:  pulumi.String("WEBSITES_ENABLE_APP_SERVICE_STORAGE"),
-					Value: pulumi.String("false"),
-				},
-			},
-			Cors: &web.CorsSettingsArgs{
-				AllowedOrigins: pulumi.StringArray{
-					pulumi.String("*"), // Allow all origins - you can restrict this later
-				},
-			},
-		},
-	})
-	if err != nil {
-		return pulumi.StringOutput{}, err
-	}
+	// Oh that code got a bit messed up, can you fix it
+	// NewWebApp(Args{
 
-	apiUrl := pulumi.Sprintf("https://%s", webapp.DefaultHostName)
+	// 	Kind:              pulumi.String("app,linux,container"),
+
+	// 	SiteConfig: &web.SiteConfigArgs{
+	// 		LinuxFxVersion: pulumi.Sprintf("DOCKER|%s", image.ImageName),
+	// 		AppSettings: web.NameValuePairArray{
+	// 			&web.NameValuePairArgs{
+	// 				Name:  pulumi.String("WEBSITES_ENABLE_APP_SERVICE_STORAGE"),
+	// 				Value: pulumi.String("false"),
+	// 			},
+	// 		},
+	// 		Cors: &web.CorsSettingsArgs{
+	// 			AllowedOrigins: pulumi.StringArray{
+	// 				pulumi.String("*"), // Allow all origins - you can restrict this later
+	// 			},
+	// 		},
+	// 	},
+	// })
+	// if err != nil {
+	// 	return pulumi.StringOutput{}, err
+	// }
+
+	// Again that error, hmmmpfff, or does it work???
+	apiUrl := fmt.Sprintf("https://%s", webapp.DefaultHostName)
 
 	ctx.Export("apiUrl", apiUrl)
 
@@ -154,54 +154,36 @@ func createStaticWebsite(ctx *pulumi.Context, args StaticWebsiteArgs) error {
 		return err
 	}
 
-	// Read the HTML file to use as a trigger for rebuilding when it changes
-	htmlAsset := pulumi.NewFileAsset("./www/index.html")
+	// How do we get the apiUrl into the HTML file?
+	// Smth like ls -la .www/; sed -e \"s|API_URL|$ENV_API_URL|g\" ./www/index.html would be cool, but can we just call that local.NewCommand ?
 
-	staticPageHTML, err := local.NewCommand(ctx, "my-bucket", &local.CommandArgs{
-		Update: pulumi.String("ls -la .www/; sed -e \"s|API_URL|$ENV_API_URL|g\" ./www/index.html"),
-		Environment: pulumi.StringMap{
-			"ENV_API_URL": args.apiUrl,
-		},
-		Triggers: pulumi.Array{
-			htmlAsset,
-		},
+	_, err = storage.NewBlob(ctx, "blobResource", &storage.BlobArgs{
+		AccountName:       storageAccount.Name,
+		ContainerName:     staticWebsite.ContainerName,
+		ResourceGroupName: args.rg.Name,
+		BlobName:          pulumi.String(staticWebsiteIndexDocument),
+		ContentType:       pulumi.String("text/html"),
+		Source:            pulumi.NewFileAsset("./www/index.html"),
+		Type:              storage.BlobTypeBlock,
 	})
 	if err != nil {
 		return err
 	}
 
-	staticPageHTML.Stdout.ApplyT(func(staticPageHTML string) error {
-		fmt.Printf("Static page HTML: %s\n", staticPageHTML)
-		_, err = storage.NewBlob(ctx, "blobResource", &storage.BlobArgs{
-			AccountName:       storageAccount.Name,
-			ContainerName:     staticWebsite.ContainerName,
-			ResourceGroupName: args.rg.Name,
-			BlobName:          pulumi.String(staticWebsiteIndexDocument),
-			ContentType:       pulumi.String("text/html"),
-			Source:            pulumi.NewStringAsset(staticPageHTML),
-			Type:              storage.BlobTypeBlock,
-		})
-		if err != nil {
-			return err
-		}
-
-		// Upload favicon if it exists
-		_, err = storage.NewBlob(ctx, "faviconResource", &storage.BlobArgs{
-			AccountName:       storageAccount.Name,
-			ContainerName:     staticWebsite.ContainerName,
-			ResourceGroupName: args.rg.Name,
-			BlobName:          pulumi.String("favicon.ico"),
-			ContentType:       pulumi.String("image/x-icon"),
-			Source:            pulumi.NewFileAsset("./www/favicon.ico"),
-			Type:              storage.BlobTypeBlock,
-		})
-		if err != nil {
-			// If favicon doesn't exist, that's OK - just continue
-			fmt.Printf("Note: favicon.ico not found in ./www/ - skipping favicon upload\n")
-		}
-
-		return nil
+	// Upload favicon if it exists
+	_, err = storage.NewBlob(ctx, "faviconResource", &storage.BlobArgs{
+		AccountName:       storageAccount.Name,
+		ContainerName:     staticWebsite.ContainerName,
+		ResourceGroupName: args.rg.Name,
+		BlobName:          pulumi.String("favicon.ico"),
+		ContentType:       pulumi.String("image/x-icon"),
+		Source:            pulumi.NewFileAsset("./www/favicon.ico"),
+		Type:              storage.BlobTypeBlock,
 	})
+	if err != nil {
+		// If favicon doesn't exist, that's OK - just continue
+		fmt.Printf("Note: favicon.ico not found in ./www/ - skipping favicon upload\n")
+	}
 
 	// Q: What happens if we print a string.Output directly?
 	// A: ...
