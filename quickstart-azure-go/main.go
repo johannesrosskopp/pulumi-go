@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi-command/sdk/go/command/local"
-
 	resources "github.com/pulumi/pulumi-azure-native-sdk/resources/v3"
 	storage "github.com/pulumi/pulumi-azure-native-sdk/storage/v3"
 	web "github.com/pulumi/pulumi-azure-native-sdk/web/v3"
